@@ -15,13 +15,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * See http://tasvideos.org/Lsnes/Movieformat.html
- *
- * Note: LSMV files are ZIP files. To convert one using this tool, extract it
- * first, then point this tool at the file named "input" inside the extracted
- * directory.
- */
+// See http://www.fceux.com/web/FM2.html
 
 var fs = require("fs");
 
@@ -29,8 +23,19 @@ var inputFile = fs.readFileSync(process.argv[2], "utf8");
 var outputFile = fs.createWriteStream(process.argv[3]);
 var inputLines = inputFile.split("\n");
 
-const startOffset = +process.argv[4];
-const inputLine = /^F\.( 0)?( 0)?\|(............)$/;
+const inputLine = /^\|([0-9]*)\|(........)\|.*$/;
+
+// Controls bitmap
+const bitMap = [
+    7, // Right
+    6, // Left
+    5, // Down
+    4, // Up
+    3, // Start
+    2, // Select
+    0, // B
+    8  // A
+];
 
 // General command for writing to command buffers
 var cmd = null;
@@ -40,43 +45,37 @@ function write(part) {
     cur += 4;
 }
 
-// Start with a reset (FIXME: Savestates eventually maybe)
-cmd = Buffer.alloc(3*4); cur = 0;
-write(0x46); // NETPLAY_CMD_RESET
-write(4); // Size of reset payload
-write(0); // Reset at frame 0
-outputFile.write(cmd);
-
-// Offset by some fixed number of frames
-cmd = Buffer.alloc(7*4); cur = 0;
-write(3); // NETPLAY_CMD_INPUT
-write(5*4); // Size of input payload
-for (var i = 0; i < 5; i++)
-   write(0);
-for (var fi = 0; fi < startOffset; fi++)
-{
-   cmd.writeUInt32BE(fi, 8);
-   outputFile.write(cmd);
-   cmd = Buffer.from(cmd);
-}
-
-var frame = startOffset;
+var frame = 0;
 for (var li = 0; li < inputLines.length; li++) {
     // Read in the line
     var line = inputLines[li].trim();
     if (line === "") continue;
+    if (line[0] !== "|") continue;
 
     // Parse it
     var parts = inputLine.exec(line);
-    if (parts === null)
+    if (parts === null) {
         console.error(`Unrecognized line: ${line}`);
-    var controls = parts[3];
+        continue;
+    }
+    var commands = +parts[1];
+    var controls = parts[2];
 
-    /* It's easy to convert the controls, as (presumably by no coincidence)
-     * they're in the exact same order as in RA */
+    if (commands & 1) {
+        // Soft reset 
+        cmd = Buffer.alloc(3*4); cur = 0;
+        write(0x46); // NETPLAY_CMD_RESET
+        write(4); // Size of reset payload
+        write(frame);
+        outputFile.write(cmd);
+    }
+    if (commands & (~1))
+        console.error(`Unrecognized command ${commands}!`);
+
+    // Convert the controls
     var raControls = 0;
-    for (var ci = 0; ci < 12; ci++) {
-        if (controls[ci] !== ".") raControls |= (1<<ci);
+    for (var ci = 0; ci < bitMap.length; ci++) {
+        if (controls[ci] !== ".") raControls |= (1<<bitMap[ci]);
     }
 
     // Now generate the input command
