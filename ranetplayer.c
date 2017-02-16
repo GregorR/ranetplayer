@@ -61,7 +61,7 @@ static uint32_t cmd, cmd_size, *payload;
 static uint32_t frame_offset = 0;
 
 /* Send a bit of our input */
-void send_input(uint32_t cur_frame)
+bool send_input(uint32_t cur_frame)
 {
    while (1)
    {
@@ -69,7 +69,7 @@ void send_input(uint32_t cur_frame)
 
       if (read(ranp, &cmd, sizeof(uint32_t)) != sizeof(uint32_t) ||
           read(ranp, &cmd_size, sizeof(uint32_t)) != sizeof(uint32_t))
-         return;
+         return false;
 
       cmd = ntohl(cmd);
       cmd_size = ntohl(cmd_size);
@@ -80,7 +80,7 @@ void send_input(uint32_t cur_frame)
       }
 
       if (read(ranp, payload, cmd_size) != cmd_size)
-         return;
+         return false;
 
       /* Adjust the frame for commands we know */
       switch (cmd)
@@ -99,6 +99,8 @@ void send_input(uint32_t cur_frame)
       if (rd_frame > cur_frame)
          break;
    }
+
+   return true;
 }
 
 int main(int argc, char **argv)
@@ -214,7 +216,8 @@ int main(int argc, char **argv)
             if (frame_offset && payload[0] > rd_frame)
             {
                rd_frame = payload[0];
-               send_input(rd_frame - frame_offset + 5);
+               if (!send_input(rd_frame - frame_offset + 5))
+                  socket_close(sock);
             }
 
             break;
