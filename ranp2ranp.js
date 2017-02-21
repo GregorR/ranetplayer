@@ -14,6 +14,10 @@ var atLeast = 0;
 // Wait for first reset
 var waitForReset = false;
 
+// Generate a trailer
+var trailer = false;
+var lastFrame = 0;
+
 // Handle arguments
 for (var ai = 2; ai < process.argv.length; ai++) {
    var arg = process.argv[ai];
@@ -26,6 +30,11 @@ for (var ai = 2; ai < process.argv.length; ai++) {
       case "-r":
       case "--reset-wait":
          waitForReset = true;
+         break;
+
+      case "-t"
+      case "--trailer":
+         trailer = true;
          break;
 
       case "-h":
@@ -64,19 +73,23 @@ if (!inputFile || !outputFile) {
 // Handle commands
 var cmd = {"next": 0};
 while (cmd = ranp.parse(inputFile, cmd.next)) {
-   // Apply the delay if applicable
-   if (delay) {
-      if (cmd.cmd === ranp.commands.INPUT ||
-          cmd.cmd === ranp.commands.NOINPUT ||
-          cmd.cmd === ranp.commands.MODE ||
-          cmd.cmd === ranp.commands.CRC ||
-          cmd.cmd === ranp.commands.LOAD_SAVESTATE ||
-          cmd.cmd === ranp.commands.RESET ||
-          cmd.cmd === ranp.commands.FLIP_PLAYERS) {
+   // Apply frame effects
+   if (cmd.cmd === ranp.commands.INPUT ||
+       cmd.cmd === ranp.commands.NOINPUT ||
+       cmd.cmd === ranp.commands.MODE ||
+       cmd.cmd === ranp.commands.CRC ||
+       cmd.cmd === ranp.commands.LOAD_SAVESTATE ||
+       cmd.cmd === ranp.commands.RESET ||
+       cmd.cmd === ranp.commands.FLIP_PLAYERS) {
+      // Apply delay
+      if (delay) {
          cmd.payload[0] += delay;
          if (cmd.payload[0] < atLeast)
             continue;
       }
+
+      // Get last frame
+      lastFrame = cmd.payload[0];
    }
 
    // Wait for reset if applicable
@@ -101,5 +114,9 @@ while (cmd = ranp.parse(inputFile, cmd.next)) {
       }
    }
 }
+
+// If we were asked to do a trailer, do so
+if (trailer)
+   ranp.genTrailer(outputFile, lastFrame+1);
 
 outputFile.end();
