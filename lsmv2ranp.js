@@ -23,44 +23,19 @@
  * directory.
  */
 
-var fs = require("fs");
+const fs = require("fs");
+const ranp = require("./ranp.js");
 
 var inputFile = fs.readFileSync(process.argv[2], "utf8");
 var outputFile = fs.createWriteStream(process.argv[3]);
 var inputLines = inputFile.split("\n");
 
-const startOffset = +process.argv[4];
-const inputLine = /^F\.( 0)?( 0)?\|(............)$/;
-
-// General command for writing to command buffers
-var cmd = null;
-var cur = 0;
-function write(part) {
-    cmd.writeUInt32BE(part, cur);
-    cur += 4;
-}
+const inputLine = /^F\.?( 0)?( 0)?\|(............)$/;
 
 // Start with a reset (FIXME: Savestates eventually maybe)
-cmd = Buffer.alloc(3*4); cur = 0;
-write(0x46); // NETPLAY_CMD_RESET
-write(4); // Size of reset payload
-write(0); // Reset at frame 0
-outputFile.write(cmd);
+outputFile.write(ranp.gen(ranp.commands.RESET, [0]));
 
-// Offset by some fixed number of frames
-cmd = Buffer.alloc(7*4); cur = 0;
-write(3); // NETPLAY_CMD_INPUT
-write(5*4); // Size of input payload
-for (var i = 0; i < 5; i++)
-   write(0);
-for (var fi = 0; fi < startOffset; fi++)
-{
-   cmd.writeUInt32BE(fi, 8);
-   outputFile.write(cmd);
-   cmd = Buffer.from(cmd);
-}
-
-var frame = startOffset;
+var frame = 0;
 for (var li = 0; li < inputLines.length; li++) {
     // Read in the line
     var line = inputLines[li].trim();
@@ -80,18 +55,10 @@ for (var li = 0; li < inputLines.length; li++) {
     }
 
     // Now generate the input command
-    if (frame >= 0) {
-       cmd = Buffer.alloc(7*4); cur = 0;
-       write(3); // NETPLAY_CMD_INPUT
-       write(5*4); // Size of input payload
-       write(frame);
-       write(0);
-       write(raControls);
-       write(0);
-       write(0);
-       outputFile.write(cmd);
-    }
+    if (frame >= 0)
+       outputFile.write(ranp.genInput(frame, raControls));
     frame++;
 }
 
+ranp.genTrailer(outputFile, frame);
 outputFile.end();

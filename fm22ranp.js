@@ -17,7 +17,8 @@
 
 // See http://www.fceux.com/web/FM2.html
 
-var fs = require("fs");
+const fs = require("fs");
+const ranp = require("./ranp.js");
 
 var inputFile = fs.readFileSync(process.argv[2], "utf8");
 var outputFile = fs.createWriteStream(process.argv[3]);
@@ -38,13 +39,6 @@ const bitMap = [
 ];
 
 // General command for writing to command buffers
-var cmd = null;
-var cur = 0;
-function write(part) {
-    cmd.writeUInt32BE(part, cur);
-    cur += 4;
-}
-
 var frame = 0;
 for (var li = 0; li < inputLines.length; li++) {
     // Read in the line
@@ -63,11 +57,7 @@ for (var li = 0; li < inputLines.length; li++) {
 
     if (commands & 1) {
         // Soft reset 
-        cmd = Buffer.alloc(3*4); cur = 0;
-        write(0x46); // NETPLAY_CMD_RESET
-        write(4); // Size of reset payload
-        write(frame);
-        outputFile.write(cmd);
+        outputFile.write(ranp.gen(ranp.commands.RESET, [frame]));
     }
     if (commands & (~1))
         console.error(`Unrecognized command ${commands}!`);
@@ -79,18 +69,10 @@ for (var li = 0; li < inputLines.length; li++) {
     }
 
     // Now generate the input command
-    if (frame >= 0) {
-       cmd = Buffer.alloc(7*4); cur = 0;
-       write(3); // NETPLAY_CMD_INPUT
-       write(5*4); // Size of input payload
-       write(frame);
-       write(0);
-       write(raControls);
-       write(0);
-       write(0);
-       outputFile.write(cmd);
-    }
+    if (frame >= 0)
+       outputFile.write(ranp.genInput(frame, raControls));
     frame++;
 }
 
+ranp.genTrailer(outputFile, frame);
 outputFile.end();

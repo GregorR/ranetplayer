@@ -17,12 +17,11 @@
 
 // See http://tasvideos.org/EmulatorResources/Snes9x/SMV.html
 
-var fs = require("fs");
+const fs = require("fs");
+const ranp = require("./ranp.js");
 
 var inputFile = fs.readFileSync(process.argv[2]);
 var outputFile = fs.createWriteStream(process.argv[3]);
-
-const startOffset = +process.argv[4];
 
 // Mapping of SMV bits to RANP bits
 const bitMap = [
@@ -50,24 +49,7 @@ function write(part) {
 }
 
 // Start with a reset (FIXME: Savestates eventually maybe)
-cmd = Buffer.alloc(3*4); cur = 0;
-write(0x46); // NETPLAY_CMD_RESET
-write(4); // Size of reset payload
-write(0); // Reset at frame 0
-outputFile.write(cmd);
-
-// Offset by some fixed number of frames
-cmd = Buffer.alloc(7*4); cur = 0;
-write(3); // NETPLAY_CMD_INPUT
-write(5*4); // Size of input payload
-for (var i = 0; i < 5; i++)
-   write(0);
-for (var fi = 0; fi < startOffset; fi++)
-{
-   cmd.writeUInt32BE(fi, 8);
-   outputFile.write(cmd);
-   cmd = Buffer.from(cmd);
-}
+outputFile.write(ranp.gen(ranp.commands.RESET, [0]));
 
 // Validate our input file
 if (inputFile.readUInt32BE(0) !== 0x534D561A ||
@@ -87,7 +69,7 @@ var frames = inputFile.readUInt32LE(0x10);
 var frameOffset = inputFile.readUInt32LE(0x1C);
 
 // Now start reading
-var frame = startOffset;
+var frame = 0;
 for (var fi = 0; fi < frames; fi++) {
     var off = frameOffset + 2*controllers*fi;
 
@@ -100,18 +82,10 @@ for (var fi = 0; fi < frames; fi++) {
         if (frameInput & (1<<ci)) raControls |= (1<<bitMap[ci]);
 
     // Now generate the input command
-    if (frame >= 0) {
-       cmd = Buffer.alloc(7*4); cur = 0;
-       write(3); // NETPLAY_CMD_INPUT
-       write(5*4); // Size of input payload
-       write(frame);
-       write(0);
-       write(raControls);
-       write(0);
-       write(0);
-       outputFile.write(cmd);
-    }
+    if (frame >= 0)
+       outputFile.write(ranp.genInput(frame, raControls));
     frame++;
 }
 
+ranp.genTrailer(outputFile, frame);
 outputFile.end();
