@@ -69,8 +69,7 @@ for (var li = 0; li < inputLines.length; li++) {
     }
 
     // Now generate the input command
-    if (frame >= 0)
-       outputFile.write(ranp.genInput(frame, raControls));
+    outputFile.write(ranp.genInput(frame, raControls));
     frame++;
 }
 

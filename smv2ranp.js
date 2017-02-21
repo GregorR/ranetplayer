@@ -52,8 +52,9 @@ function write(part) {
 outputFile.write(ranp.gen(ranp.commands.RESET, [0]));
 
 // Validate our input file
+var version = inputFile.readUInt32LE(4);
 if (inputFile.readUInt32BE(0) !== 0x534D561A ||
-    inputFile.readUInt32LE(4) !== 1)
+    (version !== 1 && version !== 4))
     console.error("This doesn't seem to be an SMV file!");
 if (inputFile[0x15] !== 1)
     console.error(`SMV file uses unsupported options (${inputFile[0x15]}).`);
@@ -82,8 +83,7 @@ for (var fi = 0; fi < frames; fi++) {
         if (frameInput & (1<<ci)) raControls |= (1<<bitMap[ci]);
 
     // Now generate the input command
-    if (frame >= 0)
-       outputFile.write(ranp.genInput(frame, raControls));
+    outputFile.write(ranp.genInput(frame, raControls));
     frame++;
 }
 
