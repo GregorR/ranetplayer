@@ -33,7 +33,7 @@ var inputLines = inputFile.split("\n");
 const inputLine = /^F\.?( 0)?( 0)?\|(............)$/;
 
 // Start with a reset (FIXME: Savestates eventually maybe)
-outputFile.write(ranp.gen(ranp.commands.RESET, [0]));
+outputFile.write(ranp.gen(ranp.commands.RESET, 0));
 
 var frame = 0;
 for (var li = 0; li < inputLines.length; li++) {
@@ -56,7 +56,7 @@ for (var li = 0; li < inputLines.length; li++) {
 
     // Now generate the input command
     if (frame >= 0)
-       outputFile.write(ranp.genInput(frame, raControls));
+       outputFile.write(ranp.gen({"cmd": ranp.commands.INPUT, "frame": frame, "input": raControls}));
     frame++;
 }
 

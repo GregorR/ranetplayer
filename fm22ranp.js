@@ -57,7 +57,7 @@ for (var li = 0; li < inputLines.length; li++) {
 
     if (commands & 1) {
         // Soft reset 
-        outputFile.write(ranp.gen(ranp.commands.RESET, [frame]));
+        outputFile.write(ranp.gen(ranp.commands.RESET, frame));
     }
     if (commands & (~1))
         console.error(`Unrecognized command ${commands}!`);
@@ -69,7 +69,7 @@ for (var li = 0; li < inputLines.length; li++) {
     }
 
     // Now generate the input command
-    outputFile.write(ranp.genInput(frame, raControls));
+    outputFile.write(ranp.gen({"cmd": ranp.commands.INPUT, "frame": frame, "input": raControls}));
     frame++;
 }
 

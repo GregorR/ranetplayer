@@ -49,7 +49,7 @@ function write(part) {
 }
 
 // Start with a reset (FIXME: Savestates eventually maybe)
-outputFile.write(ranp.gen(ranp.commands.RESET, [0]));
+outputFile.write(ranp.gen(ranp.commands.RESET, 0));
 
 // Validate our input file
 var version = inputFile.readUInt32LE(4);
@@ -83,7 +83,7 @@ for (var fi = 0; fi < frames; fi++) {
         if (frameInput & (1<<ci)) raControls |= (1<<bitMap[ci]);
 
     // Now generate the input command
-    outputFile.write(ranp.genInput(frame, raControls));
+    outputFile.write(ranp.gen({"cmd": ranp.commands.INPUT, "frame": frame, "input": raControls}));
     frame++;
 }
 
